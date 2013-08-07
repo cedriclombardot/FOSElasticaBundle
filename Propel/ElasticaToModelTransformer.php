@@ -2,7 +2,7 @@
 
 namespace FOS\ElasticaBundle\Propel;
 
-use Elastica\Document;
+use Elastica\Result;
 use FOS\ElasticaBundle\HybridResult;
 use FOS\ElasticaBundle\Transformer\ElasticaToModelTransformerInterface;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
@@ -44,7 +44,7 @@ class ElasticaToModelTransformer implements ElasticaToModelTransformerInterface
      * Instantiates a new Mapper
      *
      * @param string $objectClass
-     * @param array $options
+     * @param array  $options
      */
     public function __construct($objectClass, array $options = array())
     {
@@ -66,12 +66,12 @@ class ElasticaToModelTransformer implements ElasticaToModelTransformerInterface
      * Transforms an array of elastica objects into an array of
      * model objects fetched from the propel repository
      *
-     * @param Document[] $elasticaObjects array of elastica objects
+     * @param  Result[] $elasticaObjects array of elastica objects
      * @return array
      */
     public function transform(array $elasticaObjects)
     {
-        $ids = array_map(function(Document $elasticaObject) {
+        $ids = array_map(function(Result $elasticaObject) {
             return $elasticaObject->getId();
         }, $elasticaObjects);
 
@@ -101,9 +101,17 @@ class ElasticaToModelTransformer implements ElasticaToModelTransformerInterface
     {
         $objects = $this->transform($elasticaObjects);
 
+        $ids = array_map(function(Result $elasticaObject) {
+            return $elasticaObject->getId();
+        }, $elasticaObjects);
+
         $result = array();
         for ($i = 0; $i < count($elasticaObjects); $i++) {
-            $result[] = new HybridResult($elasticaObjects[$i], $objects[$i]);
+            foreach ($objects as $object) {
+                if ($object->getPrimaryKey() == $ids[$i]) {
+                    $result[$i] = new HybridResult($elasticaObjects[$i], $object);
+                }
+            }
         }
 
         return $result;
@@ -128,9 +136,9 @@ class ElasticaToModelTransformer implements ElasticaToModelTransformerInterface
     /**
      * Fetch objects for theses identifier values
      *
-     * @param array $identifierValues ids values
-     * @param boolean $hydrate whether or not to hydrate the objects, false returns arrays
-     * @return array of objects or arrays
+     * @param  array   $identifierValues ids values
+     * @param  boolean $hydrate          whether or not to hydrate the objects, false returns arrays
+     * @return array   of objects or arrays
      */
     protected function findByIdentifiers(array $identifierValues, $hydrate)
     {
@@ -150,9 +158,9 @@ class ElasticaToModelTransformer implements ElasticaToModelTransformerInterface
     /**
      * Create a query to use in the findByIdentifiers() method.
      *
-     * @param string $class the model class
-     * @param string $identifierField like 'id'
-     * @param array $identifierValues ids values
+     * @param  string         $class            the model class
+     * @param  string         $identifierField  like 'id'
+     * @param  array          $identifierValues ids values
      * @return \ModelCriteria
      */
     protected function createQuery($class, $identifierField, array $identifierValues)
